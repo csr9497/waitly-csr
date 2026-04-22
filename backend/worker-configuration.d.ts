@@ -6,7 +6,6 @@ declare namespace Cloudflare {
 		mainModule: typeof import("./src/index");
 	}
 	interface Env {
-		RESEND_API_KEY: SecretsStoreSecret;
 		CORS_ORIGIN: string;
 		JWT_SECRET: string;
 		ADMIN_SECRET: string;
