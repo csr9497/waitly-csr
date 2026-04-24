@@ -1,7 +1,7 @@
 const RESEND_API_URL = 'https://api.resend.com/emails'
 // TODO producción: verificar dominio en resend.com/domains y cambiar from + recipient dinámico
 const FROM = 'Waitly <onboarding@resend.dev>'
-const FIXED_RECIPIENT = 'curso.cloudflare.workers@gmail.com'
+const FIXED_RECIPIENT = 'cesaraop.12@gmail.com'
 
 export const EmailService = {
   async sendWelcome(email: string, apiKey: SecretsStoreSecret): Promise<void> {

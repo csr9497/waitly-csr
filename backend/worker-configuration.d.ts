@@ -9,6 +9,7 @@ declare namespace Cloudflare {
 		CORS_ORIGIN: string;
 		JWT_SECRET: string;
 		ADMIN_SECRET: string;
+        RESEND_API_KEY: SecretsStoreSecret;
 	}
 }
 interface Env extends Cloudflare.Env {}
