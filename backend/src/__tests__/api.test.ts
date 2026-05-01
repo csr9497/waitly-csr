@@ -1,10 +1,16 @@
 /// <reference types="@cloudflare/vitest-pool-workers/types" />
 import { env } from 'cloudflare:workers'
 import { createExecutionContext, waitOnExecutionContext } from 'cloudflare:test'
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, beforeAll } from 'vitest'
 import worker from '../index'
 
 const BASE = 'http://localhost'
+
+beforeAll(async () => {
+  await env.DB.prepare(
+    'CREATE TABLE IF NOT EXISTS waitlist (email TEXT PRIMARY KEY, joined_at TEXT NOT NULL, country TEXT)',
+  ).run()
+})
 
 describe('GET /health', () => {
   it('returns 200 with status ok', async () => {
@@ -31,8 +37,39 @@ describe('POST /waitlist', () => {
     )
     await waitOnExecutionContext(ctx)
     expect(res.status).toBe(201)
-    const body = (await res.json()) as { success: boolean }
+    const body = (await res.json()) as { success: boolean; entry: { joinedAt: string } }
     expect(body.success).toBe(true)
+    expect(new Date(body.entry.joinedAt).toISOString()).toBe(body.entry.joinedAt)
+  })
+
+  it('returns 201 with duplicate message for existing email', async () => {
+    const ctx1 = createExecutionContext()
+    await worker.fetch(
+      new Request(`${BASE}/waitlist`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: 'duplicate@example.com' }),
+      }),
+      env,
+      ctx1,
+    )
+    await waitOnExecutionContext(ctx1)
+
+    const ctx2 = createExecutionContext()
+    const res = await worker.fetch(
+      new Request(`${BASE}/waitlist`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: 'duplicate@example.com' }),
+      }),
+      env,
+      ctx2,
+    )
+    await waitOnExecutionContext(ctx2)
+    expect(res.status).toBe(201)
+    const body = (await res.json()) as { success: boolean; message: string }
+    expect(body.success).toBe(true)
+    expect(body.message).toContain('Ya estás en la lista')
   })
 
   it('returns 400 for invalid email', async () => {
