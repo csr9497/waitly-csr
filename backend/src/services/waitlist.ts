@@ -1,10 +1,3 @@
-// Persistence abstraction — swap por D1 cuando conectes la base de datos.
-//
-// Ejemplo D1:
-//   await env.DB.prepare(
-//     'INSERT INTO waitlist (email, country, joined_at) VALUES (?, ?, ?)'
-//   ).bind(email, country, new Date().toISOString()).run()
-
 export interface WaitlistEntry {
   email: string
   joinedAt: string
@@ -17,35 +10,41 @@ export interface WaitlistResult {
   entry: WaitlistEntry
 }
 
-// Mock data — reemplazar con consultas D1
-const MOCK_ENTRIES: WaitlistEntry[] = [
-  { email: 'ana@example.com', joinedAt: '2026-03-24T10:00:00.000Z', country: 'MX' },
-  { email: 'carlos@example.com', joinedAt: '2026-03-24T11:30:00.000Z', country: 'CO' },
-  { email: 'lucia@example.com', joinedAt: '2026-03-24T13:00:00.000Z', country: 'AR' },
-]
-
 export const WaitlistService = {
-  async addEmail(email: string, country: string | null): Promise<WaitlistResult> {
-    // TODO: reemplazar con INSERT en D1
-    const entry: WaitlistEntry = {
-      email,
-      joinedAt: new Date().toISOString(),
-      country,
-    }
+  async addEmail(email: string, country: string | null, db: D1Database): Promise<WaitlistResult> {
+    const joinedAt = new Date().toISOString()
+
+    await db
+      .prepare('INSERT OR IGNORE INTO waitlist (email, joined_at, country) VALUES (?, ?, ?)')
+      .bind(email, joinedAt, country)
+      .run()
+
+    const entry = await db
+      .prepare('SELECT email, joined_at as joinedAt, country FROM waitlist WHERE email = ?')
+      .bind(email)
+      .first<WaitlistEntry>()
+
+    const isNew = entry!.joinedAt === joinedAt
+
     return {
       success: true,
-      message: '¡Te agregamos a la lista de espera!',
-      entry,
+      message: isNew ? '¡Te agregamos a la lista de espera!' : '¡Ya estás en la lista de espera!',
+      entry: entry!,
     }
   },
 
-  findAll(): WaitlistEntry[] {
-    // TODO: reemplazar con SELECT * FROM waitlist
-    return MOCK_ENTRIES
+  async findAll(db: D1Database): Promise<WaitlistEntry[]> {
+    const result = await db
+      .prepare('SELECT email, joined_at as joinedAt, country FROM waitlist ORDER BY joined_at ASC')
+      .all<WaitlistEntry>()
+    return result.results
   },
 
-  findByEmail(email: string): WaitlistEntry | undefined {
-    // TODO: reemplazar con SELECT * FROM waitlist WHERE email = ?
-    return MOCK_ENTRIES.find((e) => e.email === email)
+  async findByEmail(email: string, db: D1Database): Promise<WaitlistEntry | undefined> {
+    const entry = await db
+      .prepare('SELECT email, joined_at as joinedAt, country FROM waitlist WHERE email = ?')
+      .bind(email)
+      .first<WaitlistEntry>()
+    return entry ?? undefined
   },
 }

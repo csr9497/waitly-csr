@@ -14,15 +14,21 @@
       "head_sampling_rate": 1
     }
   },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "waitly-db",
+      "database_id": "a9ee6820-92d5-4114-bf99-4e2f72917779"
+    }
+  ],
   "secrets": {
     "required": ["CORS_ORIGIN", "JWT_SECRET", "ADMIN_SECRET"]
   },
-  // To add D1, uncomment and configure:
-  // "d1_databases": [
-  //   {
-  //     "binding": "DB",
-  //     "database_name": "waitly-db",
-  //     "database_id": "<your-database-id>"
-  //   }
-  // ]
+  "secrets_store_secrets": [
+    {
+      "binding": "RESEND_API_KEY",
+      "store_id": "da8aacd638a34f40967660028f35d907",
+      "secret_name": "RESEND_API_KEY"
+    }
+  ]
 }

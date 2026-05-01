@@ -1,6 +1,7 @@
 import { OpenAPIHono, createRoute, z } from '@hono/zod-openapi'
 import { jwtAuth, requireScope } from '../middleware/auth'
 import { WaitlistService } from '../services/waitlist'
+import { EmailService } from '../services/email'
 
 // --- Schemas ---
 
@@ -53,8 +54,13 @@ publicWaitlistRouter.openapi(postRoute, async (c) => {
   const { email } = c.req.valid('json')
   const country = c.req.header('CF-IPCountry') ?? null
 
-  const result = await WaitlistService.addEmail(email, country)
+  const result = await WaitlistService.addEmail(email, country, c.env.DB)
+  
+  c.executionCtx.waitUntil(
+    EmailService.sendWelcome(email, c.env.RESEND_API_KEY).catch(() => {}),
+  )
   return c.json(result, 201)
+
 })
 
 // --- Rutas protegidas (requieren JWT) ---
@@ -129,14 +135,14 @@ const getByEmailRoute = createRoute({
   },
 })
 
-protectedWaitlistRouter.openapi(getListRoute, (c) => {
-  const entries = WaitlistService.findAll()
+protectedWaitlistRouter.openapi(getListRoute, async (c) => {
+  const entries = await WaitlistService.findAll(c.env.DB)
   return c.json({ entries, total: entries.length }, 200 as const)
 })
 
-protectedWaitlistRouter.openapi(getByEmailRoute, (c) => {
+protectedWaitlistRouter.openapi(getByEmailRoute, async (c) => {
   const { email } = c.req.valid('param')
-  const entry = WaitlistService.findByEmail(email)
+  const entry = await WaitlistService.findByEmail(email, c.env.DB)
   if (!entry) return c.json({ error: 'Email no encontrado en la lista' }, 404 as const)
   return c.json(entry, 200 as const)
 })
